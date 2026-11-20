@@ -1,0 +1,94 @@
+esphome:
+  name: inverter-sniffer
+  friendly_name: inverter_sniffer
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+
+api:
+  encryption:
+    key: "<REDACTADO>"
+
+ota:
+  - platform: esphome
+    password: "<REDACTADO>"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  use_address: 192.168.68.63
+
+  ap:
+    ssid: "Inverter-Sniffer"
+    password: "<REDACTADO>"
+
+captive_portal:
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [modbus_sniffer]
+
+uart:
+  id: rs485_uart
+  baud_rate: 9600
+  rx_pin: GPIO34
+  tx_pin: GPIO17
+
+sensor:
+  - platform: template
+    name: "SOC"
+    id: soc
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Battery Voltage"
+    id: bat_v
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "Battery Current"
+    id: bat_i
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+
+  - platform: template
+    name: "MPPT1 Power"
+    id: mppt1
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "MPPT2 Power"
+    id: mppt2
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Load 21B"
+    id: load_21b
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  - platform: template
+    name: "Load 232"
+    id: load_232
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+modbus_sniffer:
+  uart_id: rs485_uart
+  soc: soc
+  battery_voltage: bat_v
+  battery_current: bat_i
+  mppt1_power: mppt1
+  mppt2_power: mppt2
+  load_21b: load_21b
+  load_232: load_232

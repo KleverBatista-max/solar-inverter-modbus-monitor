@@ -1,0 +1,150 @@
+esphome:
+  name: solarinverter
+  friendly_name: solarinverter
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Logging
+logger:
+  level: VERY_VERBOSE
+
+# REQUIRED for modbus_sniffer (uses sensor::Sensor)
+sensor:
+
+# Home Assistant API
+api:
+  encryption:
+    key: "<REDACTADO>"
+
+ota:
+  - platform: esphome
+    password: "<REDACTADO>"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  use_address: 192.168.68.63
+
+  ap:
+    ssid: "Solarinverter Fallback Hotspot"
+    password: "<REDACTADO>"
+
+captive_portal:
+
+# =========================
+# UART RS485
+# =========================
+uart:
+  id: rs485_uart
+  baud_rate: 9600
+  data_bits: 8
+  parity: NONE
+  stop_bits: 1
+  rx_pin: GPIO34
+  rx_buffer_size: 256
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+# =========================
+# MODBUS SNIFFER
+# =========================
+modbus_sniffer:
+  id: sniffer1
+  uart_id: rs485_uart
+  slave_id: 1
+  frame_gap_ms: 8
+
+  soc:
+    name: "Battery SOC"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+
+  battery_voltage:
+    name: "Battery Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+  battery_current:
+    name: "Battery Current"
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+
+  load_21b:
+    name: "Load 1"
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  load_232:
+    name: "Load 2"
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  mppt1_power:
+    name: "PV1 Power"
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  mppt2_power:
+    name: "PV2 Power"
+    unit_of_measurement: "W"
+    accuracy_decimals: 0
+
+  pv1_voltage:
+    name: "PV1 Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+  pv1_current:
+    name: "PV1 Current"
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+
+  pv2_voltage:
+    name: "PV2 Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+  pv2_current:
+    name: "PV2 Current"
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+
+  inverter_temperature:
+    name: "Inverter Temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 0
+
+  radiator_temperature:
+    name: "Radiator Temperature"
+    unit_of_measurement: "°C"
+    accuracy_decimals: 0
+  grid_a_voltage:
+    name: "Grid A Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+  grid_a_current:
+    name: "Grid A Current"
+    unit_of_measurement: "A"
+    accuracy_decimals: 1
+
+  grid_frequency:
+    name: "Grid Frequency"
+    unit_of_measurement: "Hz"
+    accuracy_decimals: 2
+
+  grid_b_voltage:
+    name: "Grid B Voltage"
+    unit_of_measurement: "V"
+    accuracy_decimals: 1
+
+  grid_b_current:
+    name: "Grid B Current"
+    unit_of_measurement: "A"
+    accuracy_decimals: 1

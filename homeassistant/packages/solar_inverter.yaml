@@ -1,0 +1,289 @@
+# Home Assistant package. Copy to <config>/packages/ and enable with:
+#   homeassistant:
+#     packages: !include_dir_named packages
+
+template:
+  - sensor:
+        - name: "Battery Runtime Hours At Current Load"
+          unique_id: battery_runtime_hours_at_current_load
+          unit_of_measurement: "h"
+          state_class: measurement
+          state: >
+           {% set soc = states('sensor.inverter_battery_soc')|float(0) %}
+           {% set soc_min = states('input_number.soc_minimo')|float(0) %}
+           {% set batt_kwh = states('input_number.battery_kwh')|float(14.336) %}
+           {% set batt_w = states('sensor.inverter_battery_power')|float(0) %}
+
+           {% set usable_kwh = ((soc - soc_min) / 100) * batt_kwh %}
+
+           {% if usable_kwh <= 0 %}
+             0
+           {% elif batt_w > 50 %}
+             {{ (usable_kwh / (batt_w / 1000)) | round(2) }}
+           {% elif batt_w <= 0 %}
+             {{ this.state if this.state not in ['unknown','unavailable','none',''] else 99 }}
+           {% else %}
+             {{ this.state if this.state not in ['unknown','unavailable','none',''] else 99 }}
+           {% endif %}
+        - name: "Solar Estado Real"
+          unique_id: solar_estado_real
+          state: >
+            {% set solar = states('sensor.solar_total_power')|float(0) %}
+            {% set batt = states('sensor.inverter_battery_power')|float(0) %}
+            {% set ac_w = states('sensor.airconditionermultisensor_aire_potencia')|float(0) %}
+            {% set load_total = states('sensor.inverter_load_total')|float(0) %}
+            {% set load_no_ac = [load_total - ac_w, 0] | max %}
+            {% set soc = states('sensor.inverter_battery_soc')|float(0) %}
+            {% set soc_min = states('input_number.soc_minimo')|float(0) %}
+            {% set sun_up = is_state('sun.sun', 'above_horizon') %}
+
+            {% if not sun_up %}
+              noche
+            {% elif soc <= soc_min %}
+              critico
+            {% elif solar < 120 %}
+              primeros_rayitos
+            {% elif solar < (load_no_ac * 0.35) %}
+              amanecer_defensivo
+            {% elif solar < load_no_ac %}
+              transicion_baja
+            {% elif solar < (load_no_ac + (ac_w * 0.5)) %}
+              transicion_util
+            {% elif solar >= (load_no_ac + (ac_w * 0.8)) or batt <= -150 %}
+              solar_firme
+            {% else %}
+              solar_parcial
+            {% endif %}
+          attributes:
+            solar_w: "{{ states('sensor.solar_total_power')|float(0) }}"
+            battery_w: "{{ states('sensor.inverter_battery_power')|float(0) }}"
+            ac_w: "{{ states('sensor.airconditionermultisensor_aire_potencia')|float(0) }}"
+            load_total_w: "{{ states('sensor.inverter_load_total')|float(0) }}"
+            load_no_ac_w: >
+              {% set load_total = states('sensor.inverter_load_total')|float(0) %}
+              {% set ac_w = states('sensor.airconditionermultisensor_aire_potencia')|float(0) %}
+              {{ [load_total - ac_w, 0] | max }}
+
+        - name: "Inverter Battery Power"
+          unique_id: inverter_battery_power_w
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {% set v = states('sensor.inverter_battery_voltage')|float(0) %}
+            {% set a = states('sensor.inverter_battery_current')|float(0) %}
+            {{ (v * a) | round(0) }}
+
+        - name: "Battery Charge Power"
+          unique_id: battery_charge_power
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {% set p = states('sensor.inverter_battery_power')|float(0) %}
+            {{ -p if p < 0 else 0 }}
+
+        - name: "Battery Discharge Power"
+          unique_id: battery_discharge_power
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {% set p = states('sensor.inverter_battery_power')|float(0) %}
+            {{ p if p > 0 else 0 }}
+
+        - name: "Grid Usage"
+          unique_id: grid_usage_power
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {% set va = states('sensor.inverter_grid_a_voltage')|float(0) %}
+            {% set ia = states('sensor.inverter_grid_a_current')|float(0) %}
+            {% set vb = states('sensor.inverter_grid_b_voltage')|float(0) %}
+            {% set ib = states('sensor.inverter_grid_b_current')|float(0) %}
+            {% set grid = (va * ia) + (vb * ib) %}
+            {{ 0 if grid < 20 else (grid | round(0)) }}
+
+        - name: "Solar Total Power"
+          unique_id: solar_total_power
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {{ states('sensor.inverter_pv1_power')|float(0) +
+               states('sensor.inverter_pv2_power')|float(0) }}
+
+        - name: "Inverter Load Total"
+          unique_id: inverter_load_total_w
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {{ states('sensor.inverter_load_1')|float(0)
+             + states('sensor.inverter_load_2')|float(0) }}
+           
+        - name: "Solar Forecast Remaining Today Total"
+          unique_id: solar_forecast_remaining_today_total_kwh
+          unit_of_measurement: "kWh"
+          device_class: energy
+          state_class: measurement
+          state: >
+            {{ states('sensor.energy_production_today_remaining')|float(0)
+             + states('sensor.energy_production_today_remaining_2')|float(0) }}
+
+        - name: "kWh faltantes para SOC objetivo"
+          unique_id: kwh_faltantes_soc_objetivo
+          unit_of_measurement: "kWh"
+          device_class: energy
+          state_class: measurement
+          state: >
+            {% set soc_now = states('sensor.inverter_battery_soc')|float(0) %}
+            {% set soc_target = states('input_number.soc_objetivo')|float(0) %}
+            {% set batt_kwh = states('input_number.battery_kwh')|float(0) %}
+            {% set need = (soc_target - soc_now) / 100.0 * batt_kwh %}
+            {{ [need, 0] | max | round(2) }}
+
+        - name: "Alcanza a cargar hoy"
+          unique_id: alcanza_a_cargar_hoy
+          state: >
+            {% set remaining_raw = states('sensor.solar_forecast_remaining_today_total') %}
+            {% set need = states('sensor.kwh_faltantes_para_soc_objetivo')|float(0) %}
+            {% set buffer = states('input_number.buffer_kwh')|float(0) %}
+
+            {% if remaining_raw in ['unknown', 'unavailable', 'none', ''] %}
+              {{ this.state if this.state not in ['unknown', 'unavailable', 'none', ''] else 'True' }}
+            {% else %}
+              {% set remaining = remaining_raw|float(0) %}
+              {{ remaining >= (need + buffer) }}
+            {% endif %}
+          
+        - name: "Solar Forecast Power Now Total"
+          unique_id: solar_forecast_power_now_total_w
+          unit_of_measurement: "W"
+          device_class: power
+          state_class: measurement
+          state: >
+            {{ states('sensor.power_production_now')|float(0)
+             + states('sensor.power_production_now_2')|float(0) }}
+
+sensor:
+  - platform: integration
+    source: sensor.battery_charge_power
+    name: "Battery Charge Energy"
+    unique_id: battery_charge_energy
+    unit_prefix: k
+    round: 3
+    method: left
+
+  - platform: integration
+    source: sensor.battery_discharge_power
+    name: "Battery Discharge Energy"
+    unique_id: battery_discharge_energy
+    unit_prefix: k
+    round: 3
+    method: left
+
+  - platform: integration
+    source: sensor.grid_usage
+    name: "Grid Energy Imported"
+    unique_id: grid_energy_imported
+    unit_prefix: k
+    round: 3
+    method: left
+
+  - platform: integration
+    source: sensor.solar_total_power
+    name: "Solar Energy"
+    unique_id: solar_energy_total
+    unit_prefix: k
+    round: 3
+    method: left
+
+  - platform: integration
+    source: sensor.inverter_load_total
+    name: "Load Energy"
+    unique_id: load_energy_total
+    unit_prefix: k
+    round: 3
+    method: left
+
+input_number:
+  soc_minimo:
+    min: 20.0
+    max: 60.0
+    name: "SOC Mínimo "
+    icon: "mdi:battery"
+    mode: "slider"
+    unit_of_measurement: "%"
+    step: 1.0
+  soc_objetivo:
+    min: 50.0
+    max: 82.0
+    icon: "mdi:battery"
+    name: "SOC Objetivo"
+    step: 1.0
+    mode: "slider"
+    unit_of_measurement: "%"
+  soc_full:
+    min: 60.0
+    max: 82.0
+    name: "SOC Full"
+    icon: "mdi:battery"
+    mode: "slider"
+    step: 1.0
+    unit_of_measurement: "%"
+  buffer_kwh:
+    min: 0.0
+    max: 5.0
+    name: "Buffer kWh"
+    icon: "mdi:lightning-bolt"
+    step: 0.1
+    unit_of_measurement: "kWh"
+    mode: "slider"
+  soc_reserva_noche:
+    min: 20.0
+    max: 90.0
+    name: "SOC reserva noche"
+    icon: "mdi:battery-charging-wireless-90"
+    step: 1.0
+    mode: "slider"
+  battery_kwh:
+    min: 0.0
+    max: 30.0
+    name: "Battery kWh"
+    step: 0.1
+    mode: "slider"
+    unit_of_measurement: "kWh"
+  battery_capacity_ah:
+    min: 50.0
+    max: 600.0
+    name: "Battery Capacity (Ah)"
+    icon: "mdi:battery-alert-variant"
+    unit_of_measurement: "Ah"
+    mode: "slider"
+    step: 1.0
+  battery_nominal_voltage_v:
+    min: 12.0
+    max: 100.0
+    name: "Battery Nominal Voltage (V)"
+    icon: "mdi:battery-alert"
+    unit_of_measurement: "V"
+    step: 0.1
+    mode: "slider"
+  charge_efficiency:
+    min: 0.7
+    max: 1.0
+    name: "Charge Efficiency"
+    icon: "mdi:battery-charging"
+    step: 0.01
+    unit_of_measurement: "ratio"
+    mode: "slider"
+  solar_hora_confianza:
+    min: 6.0
+    max: 12.0
+    name: "Solar Hora Confianza"
+    icon: "mdi:access-point-check"
+    unit_of_measurement: "h"
+    step: 0.25
+    mode: "slider"

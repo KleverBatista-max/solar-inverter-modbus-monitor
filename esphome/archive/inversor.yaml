@@ -1,0 +1,32 @@
+esphome:
+  name: inversor
+  friendly_name: inversor
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "<REDACTADO>"
+
+ota:
+  - platform: esphome
+    password: "<REDACTADO>"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Inversor Fallback Hotspot"
+    password: "<REDACTADO>"
+
+captive_portal:
+    
