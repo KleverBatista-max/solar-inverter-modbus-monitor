@@ -10,6 +10,14 @@ Reads a hybrid solar inverter **without touching its monitoring port logic**: an
 | `raspberry-original/read_inverter.py` | First version: a Raspberry Pi + USB‑RS485 reading Modbus RTU (9600 8N1) |
 | `esphome/archive/` | Earlier attempts |
 
+## Solar forecast (how the system "knows" how much sun is coming)
+Besides reading the inverter, the package adds a **solar forecast** from Home Assistant's *Forecast.Solar* integration, which uses the location of the house, the weather and the orientation of each panel string (here two strings of 2.3 kWp, tilted 15°, facing 162° and 202°, on a 6.5 kW inverter; one integration entry per string). The sensors:
+- `Solar Forecast Remaining Today Total`: kWh of sun still expected today, both strings added.
+- `Solar Forecast Power Now Total`: expected power right now, to compare with what the panels really produce.
+- `kWh faltantes para SOC objetivo`: energy the battery still needs to reach the target SOC.
+- `Alcanza a cargar hoy`: true when the forecast remaining today covers the missing energy plus a safety buffer.
+The A/C controller uses these to decide whether it is worth pre-cooling now. Set up Forecast.Solar with your own coordinates and panel data (not included here).
+
 ## Works with
 - **[solar-ac-controller](https://github.com/KleverBatista-max/solar-ac-controller)** uses these sensors to run the air conditioner on solar surplus.
 - **[bluetti-solar-charger](https://github.com/KleverBatista-max/bluetti-solar-charger)** charges a power station when the battery shows real surplus.
